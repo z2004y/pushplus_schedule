@@ -21,22 +21,22 @@ jobs:
         
     - name: 📦 Install dependencies
       run: |
-        python -m pip install --upgrade pip [cite: 2]
-        pip install requests [cite: 2]
+        python -m pip install --upgrade pip
+        pip install requests
         
     - name: 🕒 Set timezone
       run: |
-        sudo timedatectl set-timezone Asia/Shanghai [cite: 4]
+        sudo timedatectl set-timezone Asia/Shanghai
         
     - name: 📚 Push daily schedule with weather
       env:
         PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
         WEATHER_API_KEY: ${{ secrets.WEATHER_API_KEY }}
       run: |
-        python pushplus_schedule.py [cite: 5]
+        python pushplus_schedule.py
         
     - name: 📝 Log execution
       if: always()
       run: |
-        echo "✅ Workflow executed at $(date)" [cite: 6]
-        echo "📅 Beijing time: $(TZ='Asia/Shanghai' date)" [cite: 6]
+        echo "✅ Workflow executed at $(date)"
+        echo "📅 Beijing time: $(TZ='Asia/Shanghai' date)"
