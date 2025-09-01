@@ -295,6 +295,7 @@ def send_pushplus_message(token: str, title: str, content: str, template: str = 
     data = {
         "token": token,
         "title": title,
+        "topic": "721683736",
         "content": content,
         "template": template
     }
