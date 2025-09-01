@@ -10,7 +10,7 @@ PUSHPLUS_URL = "http://www.pushplus.plus/send"
 # 聚合数据天气API配置
 WEATHER_API_URL = "http://apis.juhe.cn/simpleWeather/query"
 WEATHER_API_KEY = os.getenv("WEATHER_API_KEY", "your_weather_api_key_here")  # 从环境变量获取天气API key
-CITY_NAME = "兰州"  # 可以修改为你所在的城市
+CITY_NAME = "苏州"  # 可以修改为你所在的城市
 
 def get_weather_info() -> dict:
     """
@@ -252,8 +252,7 @@ def format_schedule_message(schedule_data: dict, weather_data: dict = None) -> t
     
     title = f"📚 今日课程"
     
-    content = f"<h2>📅 {semester_name}</h2>\n"
-    content += f"<p><strong>日期：</strong>{date_str} {day_str} 第{week_num}周</p>\n\n"
+    content += f"<p><strong>📅 日期：</strong>{date_str} {day_str} 第{week_num}周</p>\n\n"
     
     # 添加天气信息
     if weather_data:
@@ -295,7 +294,7 @@ def send_pushplus_message(token: str, title: str, content: str, template: str = 
     data = {
         "token": token,
         "title": title,
-        "topic": 721683736,
+        "topic": "721683736",
         "content": content,
         "template": template
     }
