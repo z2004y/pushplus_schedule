@@ -250,7 +250,7 @@ def format_schedule_message(schedule_data: dict, weather_data: dict = None) -> t
     week_num = schedule_data["week"]
     semester_name = schedule_data["semester_name"]
     
-    title = f"📚 今日课程 & 天气 ({date_str} {day_str})"
+    title = f"📚 今日课程"
     
     content = f"<h2>📅 {semester_name}</h2>\n"
     content += f"<p><strong>日期：</strong>{date_str} {day_str} 第{week_num}周</p>\n\n"
