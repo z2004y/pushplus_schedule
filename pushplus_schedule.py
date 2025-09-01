@@ -240,7 +240,7 @@ def get_daily_schedule(json_file_path: str) -> dict:
 
 def format_schedule_message(schedule_data: dict, weather_data: dict = None) -> tuple:
     """
-    格式化课程表消息，返回标题和内容。
+    格式化课程表消息，返回标题和内容（优化后的卡片布局）。
     """
     if "error" in schedule_data:
         return "课程表推送错误", schedule_data["error"]
@@ -251,39 +251,47 @@ def format_schedule_message(schedule_data: dict, weather_data: dict = None) -> t
     semester_name = schedule_data["semester_name"]
     
     title = f"📚 今日课程"
-    
-    content = f"<p><strong>📅 日期：</strong>{date_str} {day_str} 第{week_num}周</p>\n\n"
-    
+
+    # 顶部信息卡片
+    content = f"""
+    <div style='background: linear-gradient(135deg, #ffeaa7, #fab1a0);
+                padding: 15px; border-radius: 12px; margin: 10px 0; color: #2d3436;'>
+        <h2 style='margin: 0;'>📅 {date_str} {day_str}</h2>
+        <p style='margin: 5px 0;'>📖 {semester_name} | 第 {week_num} 周</p>
+    </div>
+    """
+
     # 添加天气信息
     if weather_data:
         content += format_weather_html(weather_data)
-        content += "\n"
 
     if schedule_data["status"] == "not_started":
-        content += "<p>🎯 学期尚未开始，请耐心等待。</p>"
+        content += "<p style='padding: 10px; background: #ffeaa7; border-radius: 8px;'>🎯 学期尚未开始，请耐心等待。</p>"
         return title, content
 
     if schedule_data["status"] == "ended":
-        content += "<p>🎉 学期已结束，祝您假期愉快！</p>"
+        content += "<p style='padding: 10px; background: #dfe6e9; border-radius: 8px;'>🎉 学期已结束，祝您假期愉快！</p>"
         return title, content
 
     courses = schedule_data.get("courses", [])
     
     if not courses:
-        content += "<p>🎈 今天没有安排课程，可以好好休息！</p>"
+        content += "<p style='padding: 10px; background: #55efc4; border-radius: 8px;'>🎈 今天没有安排课程，可以好好休息！</p>"
     else:
-        content += f"<h3>📖 今日共有 {len(courses)} 门课程：</h3>\n"
+        content += f"<h3 style='margin-top:15px;'>📖 今日共有 {len(courses)} 门课程：</h3>\n"
         
         for i, course in enumerate(courses, 1):
-            content += f"<div style='border-left: 4px solid #4CAF50; padding-left: 15px; margin: 10px 0;'>\n"
-            content += f"<h4>📝 {course.get('name', '未知课程')}</h4>\n"
-            content += f"<p><strong>⏰ 时间：</strong>{course.get('time', '未知时间')} ({course.get('session', '未知节次')})</p>\n"
-            content += f"<p><strong>📍 地点：</strong>{course.get('location', '未知地点')}</p>\n"
-            content += f"<p><strong>👨‍🏫 老师：</strong>{course.get('teacher', '未知老师')}</p>\n"
-            content += f"<p><strong>📊 教学周：</strong>{course.get('weeks', '未知周数')}</p>\n"
-            content += "</div>\n\n"
+            content += f"""
+            <div style='border: 1px solid #dfe6e9; border-radius: 10px; padding: 12px; margin: 12px 0; box-shadow: 0 2px 5px rgba(0,0,0,0.05);'>
+                <h4 style='margin: 0 0 8px 0;'>📝 {course.get('name', '未知课程')}</h4>
+                <p><strong>⏰ 时间：</strong>{course.get('time', '未知时间')} <small>({course.get('session', '未知节次')})</small></p>
+                <p><strong>📍 地点：</strong>{course.get('location', '未知地点')}</p>
+                <p><strong>👨‍🏫 老师：</strong>{course.get('teacher', '未知老师')}</p>
+                <p><strong>📊 教学周：</strong>{course.get('weeks', '未知周数')}</p>
+            </div>
+            """
 
-    content += "<hr>\n<p style='color: #666; font-size: 12px;'>💡 此消息由课程表推送系统自动发送</p>"
+    content += "<hr>\n<p style='color: #636e72; font-size: 12px; text-align: center;'>💡 此消息由课程表推送系统自动发送</p>"
     
     return title, content
 
