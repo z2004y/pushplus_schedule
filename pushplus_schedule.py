@@ -3,8 +3,8 @@ import os
 import requests
 from datetime import datetime, date
 
-# 推送开关（0：关闭推送，1：开启推送）
-ENABLE_PUSH = 0
+# 天气推送开关（0：关闭天气推送，1：开启天气推送）
+ENABLE_WEATHER = 0
 
 # PushPlus 配置
 PUSHPLUS_TOKEN = os.getenv("PUSHPLUS_TOKEN", "your_pushplus_token_here")  # 从环境变量获取token
@@ -14,6 +14,7 @@ PUSHPLUS_URL = "http://www.pushplus.plus/send"
 WEATHER_API_URL = "http://apis.juhe.cn/simpleWeather/query"
 WEATHER_API_KEY = os.getenv("WEATHER_API_KEY", "your_weather_api_key_here")  # 从环境变量获取天气API key
 CITY_NAME = "兰州"  # 可以修改为你所在的城市
+
 
 def get_weather_info() -> dict:
     """
@@ -49,6 +50,7 @@ def get_weather_info() -> dict:
         return {"error": f"天气API网络请求失败: {e}"}
     except Exception as e:
         return {"error": f"获取天气信息时发生错误: {e}"}
+
 
 def format_weather_html(weather_data: dict) -> str:
     """
@@ -113,6 +115,7 @@ def format_weather_html(weather_data: dict) -> str:
     
     return weather_html
     
+
 def get_current_week(start_date_str: str) -> int:
     """
     根据学期开始日期计算当前是第几周。
@@ -132,6 +135,7 @@ def get_current_week(start_date_str: str) -> int:
     days_since_start = (today - start_date).days
     current_week = (days_since_start // 7) + 1
     return current_week
+
 
 def get_daily_schedule(json_file_path: str) -> dict:
     """
@@ -241,6 +245,7 @@ def get_daily_schedule(json_file_path: str) -> dict:
         "courses": daily_courses
     }
 
+
 def format_schedule_message(schedule_data: dict, weather_data: dict = None) -> tuple:
     """
     格式化课程表消息，返回标题和内容（优化后的卡片布局）。
@@ -264,8 +269,8 @@ def format_schedule_message(schedule_data: dict, weather_data: dict = None) -> t
     </div>
     """
 
-    # 添加天气信息
-    if weather_data:
+    # 添加天气信息（仅当开关开启时）
+    if ENABLE_WEATHER and weather_data:
         content += format_weather_html(weather_data)
 
     if schedule_data["status"] == "not_started":
@@ -298,6 +303,7 @@ def format_schedule_message(schedule_data: dict, weather_data: dict = None) -> t
     
     return title, content
 
+
 def send_pushplus_message(token: str, title: str, content: str, template: str = "html") -> bool:
     """
     发送PushPlus消息。
@@ -328,6 +334,7 @@ def send_pushplus_message(token: str, title: str, content: str, template: str = 
         print(f"❌ 推送消息时发生错误: {e}")
         return False
 
+
 def main():
     """
     主函数：获取课程表和天气信息并推送。
@@ -337,7 +344,7 @@ def main():
     json_path = os.path.join(script_dir, "timetable.json")
     
     # 检查token是否设置
-    if ENABLE_PUSH and (not PUSHPLUS_TOKEN or PUSHPLUS_TOKEN == "your_pushplus_token_here"):
+    if not PUSHPLUS_TOKEN or PUSHPLUS_TOKEN == "your_pushplus_token_here":
         print("❌ 请先设置您的PushPlus token！")
         print("请在GitHub仓库的Settings > Secrets中添加 PUSHPLUS_TOKEN")
         return
@@ -346,27 +353,26 @@ def main():
     print("📚 正在读取课程表...")
     schedule_data = get_daily_schedule(json_path)
     
-    # 获取天气数据
-    print("🌤️ 正在获取天气信息...")
-    weather_data = get_weather_info()
+    # 获取天气数据（根据开关）
+    weather_data = None
+    if ENABLE_WEATHER:
+        print("🌤️ 正在获取天气信息...")
+        weather_data = get_weather_info()
+    else:
+        print("🚫 天气推送已关闭，跳过天气信息。")
     
     # 格式化消息
     title, content = format_schedule_message(schedule_data, weather_data)
     
-    if ENABLE_PUSH:
-        # 发送推送
-        print("📨 正在发送推送...")
-        success = send_pushplus_message(PUSHPLUS_TOKEN, title, content)
-        
-        if success:
-            print("🎉 课程表和天气推送完成！")
-        else:
-            print("💔 推送失败，请检查配置和网络连接。")
+    # 发送推送
+    print("📨 正在发送推送...")
+    success = send_pushplus_message(PUSHPLUS_TOKEN, title, content)
+    
+    if success:
+        print("🎉 课程表推送完成！")
     else:
-        # 控制台输出结果（不开启推送）
-        print("🚫 推送功能已关闭，仅输出消息：\n")
-        print("标题：", title)
-        print("内容：", content)
+        print("💔 推送失败，请检查配置和网络连接。")
+
 
 if __name__ == "__main__":
     main()
