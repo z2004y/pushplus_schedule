@@ -4,7 +4,7 @@ import requests
 from datetime import datetime, date
 
 # 推送开关（0：关闭推送，1：开启推送）
-ENABLE_PUSH = 1
+ENABLE_PUSH = 0
 
 # PushPlus 配置
 PUSHPLUS_TOKEN = os.getenv("PUSHPLUS_TOKEN", "your_pushplus_token_here")  # 从环境变量获取token
