@@ -3,6 +3,9 @@ import os
 import requests
 from datetime import datetime, date
 
+# 推送开关（0：关闭推送，1：开启推送）
+ENABLE_PUSH = 1
+
 # PushPlus 配置
 PUSHPLUS_TOKEN = os.getenv("PUSHPLUS_TOKEN", "your_pushplus_token_here")  # 从环境变量获取token
 PUSHPLUS_URL = "http://www.pushplus.plus/send"
@@ -334,7 +337,7 @@ def main():
     json_path = os.path.join(script_dir, "timetable.json")
     
     # 检查token是否设置
-    if not PUSHPLUS_TOKEN or PUSHPLUS_TOKEN == "your_pushplus_token_here":
+    if ENABLE_PUSH and (not PUSHPLUS_TOKEN or PUSHPLUS_TOKEN == "your_pushplus_token_here"):
         print("❌ 请先设置您的PushPlus token！")
         print("请在GitHub仓库的Settings > Secrets中添加 PUSHPLUS_TOKEN")
         return
@@ -350,14 +353,20 @@ def main():
     # 格式化消息
     title, content = format_schedule_message(schedule_data, weather_data)
     
-    # 发送推送
-    print("📨 正在发送推送...")
-    success = send_pushplus_message(PUSHPLUS_TOKEN, title, content)
-    
-    if success:
-        print("🎉 课程表和天气推送完成！")
+    if ENABLE_PUSH:
+        # 发送推送
+        print("📨 正在发送推送...")
+        success = send_pushplus_message(PUSHPLUS_TOKEN, title, content)
+        
+        if success:
+            print("🎉 课程表和天气推送完成！")
+        else:
+            print("💔 推送失败，请检查配置和网络连接。")
     else:
-        print("💔 推送失败，请检查配置和网络连接。")
+        # 控制台输出结果（不开启推送）
+        print("🚫 推送功能已关闭，仅输出消息：\n")
+        print("标题：", title)
+        print("内容：", content)
 
 if __name__ == "__main__":
     main()
