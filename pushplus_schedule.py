@@ -103,7 +103,7 @@ def main():
         today_courses = [c for c in config["courses"] if c["day"] == weekday_cn and is_course_this_week(c["weeks"], curr_week)]
         today_courses.sort(key=lambda x: x.get("time", "00:00"))
         
-        title = f"📚 {weekday_cn}课表"
+        title = f"📚 {weekday_cn}课表(第{curr_week}周)"
         course_count_html = f"<div style='padding: 25px 25px 10px;'><span style='font-size: 16px; font-weight: bold; color: #2f3542;'>📖 今日共有 {len(today_courses)} 门课程</span></div>"
         
         course_cards = ""
