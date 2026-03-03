@@ -35,24 +35,18 @@ def get_holiday_status():
         # 普通周末判断
         return (today.weekday() >= 5), "周末"
     except:
-        # 网络异常时回退到本地判断
         return (date.today().weekday() >= 5), "普通周末"
 
 def get_current_week(start_date_str):
     """计算当前教学周"""
     start_dt = datetime.strptime(start_date_str, "%Y-%m-%d").date()
-    # 调整到起始周的周一
     start_monday = start_dt - timedelta(days=start_dt.weekday())
     days_diff = (date.today() - start_monday).days
     return (days_diff // 7) + 1
 
 def is_course_this_week(week_str, current_week):
-    """
-    解析周数逻辑：
-    支持 "3-18周", "3,5,7周", "3-12,17-18周", "3周" 等格式
-    """
+    """解析周数逻辑"""
     clean_str = week_str.replace('周', '').strip()
-    # 按逗号分割区间
     intervals = clean_str.split(',')
     for interval in intervals:
         if '-' in interval:
@@ -77,7 +71,7 @@ def main():
         print("错误：未找到 timetable.json 文件")
         return
 
-    # 2. 计算时间和周数
+    # 2. 时间与周数计算
     today = date.today()
     curr_week = get_current_week(config["semester_info"]["start_date"])
     weekday_cn = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"][today.weekday()]
@@ -88,33 +82,30 @@ def main():
     # 计算学期结束倒计时
     end_date = datetime.strptime(config["semester_info"]["end_date"], "%Y-%m-%d").date()
     days_to_end = (end_date - today).days
+    countdown_text = f"距离学期结束还有 {days_to_end} 天" if days_to_end > 0 else "学期已结束"
     
     is_off_day, holiday_tag = get_holiday_status()
 
     # 3. 获取天气数据
-    curr_temp, weather_info, temp_range = "N/A", "未知", "--/--"
+    curr_temp, weather_info = "N/A", "未知"
     if WEATHER_API_KEY:
         try:
             w_url = f"http://apis.juhe.cn/simpleWeather/query?city={CITY_NAME}&key={WEATHER_API_KEY}"
             w_res = requests.get(w_url, timeout=5).json()
             if w_res.get("error_code") == 0:
                 curr_temp = w_res["result"]["realtime"]["temperature"]
-                today_f = w_res["result"]["future"][0]
-                weather_info = today_f['weather']
-                temp_range = today_f['temperature'].replace('\\', '')
+                weather_info = w_res["result"]["future"][0]['weather']
         except: pass
 
-    # 4. 筛选今日课程
+    # 4. 筛选今日课程并统计
     today_courses = [c for c in config["courses"] if c["day"] == weekday_cn and is_course_this_week(c["weeks"], curr_week)]
     today_courses.sort(key=lambda x: x.get("time", "00:00"))
+    course_count = len(today_courses)
+    count_text = f" · 今日共有 {course_count} 门课" if course_count > 0 else ""
 
     # 5. UI 渲染逻辑
-    # 头部配色：期末周使用红色，平时使用紫色
     header_bg = "linear-gradient(135deg, #ff4757, #ff6b81)" if is_final_period else "linear-gradient(135deg, #4834d4, #686de0)"
     title_prefix = "🔥 期末周提醒" if is_final_period else "📚 今日课表"
-    
-    # 倒计时条
-    countdown_text = f"距离学期结束还有 {days_to_end} 天" if days_to_end > 0 else "学期已结束"
     
     main_body_html = ""
     if is_off_day and not today_courses:
@@ -122,15 +113,12 @@ def main():
         <div style='padding: 40px 20px; text-align: center;'>
             <div style='font-size: 50px;'>☕</div>
             <h4 style='color: #2f3542; margin: 10px 0;'>{holiday_tag}休息日</h4>
-            <p style='color: #747d8c; font-size: 13px;'>{countdown_text}</p>
         </div>"""
     else:
-        # 生成课程卡片
         course_cards = ""
         colors = [("#ff4757", "#ffeeee"), ("#2e86de", "#e1f0ff"), ("#ffa502", "#fff4e1"), ("#2ed573", "#e7fbf0")]
         
         for i, c in enumerate(today_courses):
-            # 期末周统一色调增强紧张感，平时使用彩色
             m_color = "#ff4757" if is_final_period else colors[i % len(colors)][0]
             b_color = "#fff5f5" if is_final_period else colors[i % len(colors)][1]
             
@@ -151,11 +139,7 @@ def main():
         if not today_courses:
             course_cards = "<p style='text-align: center; color: #747d8c; padding: 30px;'>今天没课，记得温习功课哦！</p>"
             
-        main_body_html = f"""
-        <div style='padding: 15px 20px;'>
-            <div style='margin-bottom: 15px; font-size: 13px; color: #a4b0be; text-align: center;'>— {countdown_text} —</div>
-            {course_cards}
-        </div>"""
+        main_body_html = f"<div style='padding: 15px 20px;'>{course_cards}</div>"
 
     # 6. 组装最终 HTML
     full_html = f"""
@@ -164,7 +148,7 @@ def main():
             <div style='display: flex; justify-content: space-between; align-items: flex-end;'>
                 <div>
                     <h2 style='margin: 0; font-size: 22px;'>{title_prefix}</h2>
-                    <p style='margin: 5px 0 0; opacity: 0.8; font-size: 13px;'>第 {curr_week} 周 · {weekday_cn}</p>
+                    <p style='margin: 5px 0 0; opacity: 0.8; font-size: 13px;'>第 {curr_week} 周 · {weekday_cn}{count_text}</p>
                 </div>
                 <div style='text-align: right;'>
                     <div style='font-size: 26px; font-weight: bold;'>{curr_temp}°C</div>
@@ -172,15 +156,28 @@ def main():
                 </div>
             </div>
         </div>
+        
         {main_body_html}
-        <div style='text-align: center; padding: 15px; color: #ced6e0; font-size: 11px;'>自动提醒服务 · 祝你考试必过</div>
+
+        <div style='margin-top: 10px; padding: 0 20px;'>
+            <div style='border-top: 1px solid #e1e4e8; padding: 15px 0; text-align: center;'>
+                <span style='color: #a4b0be; font-size: 12px; letter-spacing: 1px;'>
+                    — {countdown_text} —
+                </span>
+            </div>
+        </div>
+
+        <div style='text-align: center; padding: 0 15px 20px; color: #ced6e0; font-size: 11px;'>自动提醒服务 · 祝你考试必过</div>
     </div>
     """
 
     # 7. 发送推送
+    push_title = f"{'🔥' if is_final_period else '📅'} {weekday_cn}课表"
+    push_title += f"({course_count}门课)" if course_count > 0 else "(暂无课)"
+
     push_data = {
         "token": PUSHPLUS_TOKEN,
-        "title": f"{'🔥' if is_final_period else '📅'} {weekday_cn}课表提醒",
+        "title": push_title,
         "content": full_html,
         "template": "html"
     }
