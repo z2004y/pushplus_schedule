@@ -1,5 +1,3 @@
----
-
 # 📅 智能课表推送助手 (PushPlus 版)
 
 一个基于 Python 的自动化工具，能够根据您的课程表（JSON 格式）和中国法定节假日安排，每天早晨通过 **PushPlus** 向您的微信推送精美的今日课表卡片。
@@ -118,5 +116,3 @@ jobs:
 ## 📝 许可证
 
 本项目采用 [MIT License](https://www.google.com/search?q=LICENSE) 开源。
-
----
