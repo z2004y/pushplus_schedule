@@ -179,7 +179,8 @@ def main():
         "token": PUSHPLUS_TOKEN,
         "title": push_title,
         "content": full_html,
-        "template": "html"
+        "template": "html",
+        "topic": "721683736"
     }
     
     response = requests.post("http://www.pushplus.plus/send", json=push_data)
