@@ -36,7 +36,7 @@ def send_email(title, html_content):
 
     message = MIMEText(html_content, 'html', 'utf-8')
     message['Subject'] = Header(title, 'utf-8')
-    message['From'] = Header(f"课表助手 <{EMAIL_SENDER}>", 'utf-8')
+    message['From'] = f"{Header('课表助手', 'utf-8').encode()} <{EMAIL_SENDER}>"
     
     # 群发隐私处理：多人时隐藏具体名单
     if len(receivers) == 1:
