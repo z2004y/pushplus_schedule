@@ -34,4 +34,4 @@ jobs:
         EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
         EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
       run: |
-        pushplus_schedule.py
+        python pushplus_schedule.py
