@@ -2,8 +2,8 @@ name: 📚 Daily Schedule Push
 
 on:
   schedule:
-    # 每天早上7:30 (UTC时间23:30，北京时间7:30)
-    - cron: '30 23 * * *'
+    # 每天 北京时间 07:00
+    - cron: '0 23 * * *'
   workflow_dispatch: # 允许手动触发
 
 jobs:
