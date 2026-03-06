@@ -2,7 +2,7 @@ name: 📚 Daily Schedule Push
 
 on:
   schedule:
-    # 每天 北京时间 07:00
+    # 每天 UTC 时间 23:00 (即北京时间 次日 07:00)
     - cron: '0 23 * * *'
   workflow_dispatch: # 允许手动触发
 
@@ -28,12 +28,17 @@ jobs:
       run: |
         sudo timedatectl set-timezone Asia/Shanghai
         
-    - name: 📚 Push daily schedule with weather
+    - name: 📚 Push daily schedule with weather and email
       env:
+        # 对应 GitHub Secrets 中的变量名
         PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
         WEATHER_API_KEY: ${{ secrets.WEATHER_API_KEY }}
+        EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
+        EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
+        EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
       run: |
-        python pushplus_schedule.py
+        # 确保这里的文件名与你的脚本文件名一致
+        python main.py
         
     - name: 📝 Log execution
       if: always()
