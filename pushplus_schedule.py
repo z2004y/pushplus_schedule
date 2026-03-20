@@ -163,46 +163,160 @@ def main():
     <!DOCTYPE html>
     <html lang="zh">
     <head>
-        <meta name="color-scheme" content="light dark">
-        <style>
-            @media (prefers-color-scheme: dark) {{
-                .card-wrapper {{ background: rgba(255,255,255,0.05) !important; }}
-                div, p, span, b, h2 {{ color: #ffffff !important; }}
-                [style*="background: rgba(255,255,255,0.7)"] {{ 
-                    background: rgba(45, 45, 45, 0.8) !important; 
-                    border-color: rgba(255,255,255,0.1) !important; 
-                }}
-                [style*="background: rgba(0,0,0,0.02)"] {{ background: rgba(255,255,255,0.05) !important; }}
-                [style*="color: #636e72"] {{ color: #b0bec5 !important; }}
-                [style*="color: #a4b0be"] {{ color: #78909c !important; }}
-            }}
-        </style>
+    <meta name="color-scheme" content="light dark">
+    <style>
+        body {{
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", sans-serif;
+            background: #f5f7fa;
+        }}
+    
+        .container {{
+            max-width: 520px;
+            margin: 0 auto;
+            border-radius: 28px;
+            overflow: hidden;
+            box-shadow: 0 40px 80px rgba(0,0,0,0.12);
+        }}
+    
+        .header {{
+            background: linear-gradient(135deg, #89f7fe 0%, #66a6ff 100%);
+            padding: 50px 30px 40px;
+            color: #1a1a1a;
+        }}
+    
+        .title {{
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: 1px;
+        }}
+    
+        .sub {{
+            margin-top: 8px;
+            font-size: 14px;
+            opacity: 0.7;
+        }}
+    
+        .weather {{
+            text-align: right;
+            font-size: 13px;
+        }}
+    
+        .glass {{
+            background: rgba(255,255,255,0.55);
+            backdrop-filter: blur(20px);
+            padding: 20px;
+        }}
+    
+        .card {{
+            background: rgba(255,255,255,0.75);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 18px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.06);
+            transition: all 0.25s ease;
+        }}
+    
+        .card:hover {{
+            transform: translateY(-3px);
+            box-shadow: 0 25px 50px rgba(0,0,0,0.12);
+        }}
+    
+        .course-title {{
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }}
+    
+        .tag {{
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 8px;
+            background: rgba(0,0,0,0.05);
+        }}
+    
+        .grid {{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            font-size: 13px;
+            color: #555;
+        }}
+    
+        .item {{
+            background: rgba(0,0,0,0.03);
+            padding: 8px 10px;
+            border-radius: 10px;
+        }}
+    
+        .footer {{
+            text-align: center;
+            padding: 25px 0;
+            font-size: 12px;
+            color: #999;
+        }}
+    
+        @media (prefers-color-scheme: dark) {{
+            body {{ background: #111; }}
+            .glass {{ background: rgba(30,30,30,0.6); }}
+            .card {{ background: rgba(40,40,40,0.8); }}
+            .item {{ background: rgba(255,255,255,0.05); }}
+            .title, .course-title {{ color: #fff; }}
+        }}
+    </style>
     </head>
-    <body style="margin: 0; padding: 20px; background: transparent; font-family: -apple-system, system-ui, sans-serif;">
-        <div style="max-width: 500px; margin: 0 auto; background: transparent; border-radius: 24px; overflow: hidden; box-shadow: 0 30px 60px rgba(0,0,0,0.12);">
-            <div style="background: {header_gradient}; padding: 45px 30px; color: {t_main};">
-                <table width="100%" border="0" cellspacing="0" cellpadding="0">
-                    <tr>
-                        <td align="left">
-                            <h2 style="margin: 0; font-size: 26px; font-weight: 800; letter-spacing: 1px;">{'🔥 期末作战' if is_final_period else '📅 今日行程'}</h2>
-                            <p style="margin: 8px 0 0; opacity: 0.8; font-size: 14px; font-weight: 500;">Week {curr_week} · {weekday_cn} · {today.strftime('%b %d')}</p>
-                        </td>
-                        <td align="right" style="vertical-align: bottom;">
-                            <div style="font-size: 20px; font-weight: 200;">{temp_range}</div>
-                            <div style="font-size: 12px; opacity: 0.7; font-weight: bold;">{CITY_NAME} / {weather_info}</div>
-                        </td>
-                    </tr>
-                </table>
+    
+    <body>
+    <div class="container">
+    
+        <!-- Header -->
+        <div class="header">
+            <table width="100%">
+                <tr>
+                    <td>
+                        <div class="title">
+                            {'🔥 期末作战' if is_final_period else '📅 今日行程'}
+                        </div>
+                        <div class="sub">
+                            Week {curr_week} · {weekday_cn} · {today.strftime('%m-%d')}
+                        </div>
+                    </td>
+                    <td class="weather">
+                        <div>{temp_range}</div>
+                        <div>{CITY_NAME} / {weather_info}</div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    
+        <!-- 内容 -->
+        <div class="glass">
+    
+            {course_cards if today_courses else f'''
+            <div style="text-align:center;padding:60px 0;">
+                <div style="font-size:50px;">🌿</div>
+                <div style="margin-top:10px;">今日无课，好好休息</div>
             </div>
-            <div class="card-wrapper" style="background: rgba(255,255,255,0.3); backdrop-filter: blur(12px); padding-bottom: 10px;">
-                {main_body_html}
-                <div style="text-align: center; padding: 25px 0; border-top: 1px solid rgba(0,0,0,0.04); margin: 0 25px;">
-                    <span style="color: #a4b0be; font-size: 11px; font-weight: bold; letter-spacing: 2px;">— SEMESTER COUNTDOWN —</span>
-                    <div style="color: {t_sub}; font-size: 12px; margin-top: 8px;">{countdown_text}</div>
+            '''}
+    
+            <!-- 倒计时 -->
+            <div style="text-align:center;margin-top:20px;">
+                <div style="font-size:11px;letter-spacing:2px;color:#aaa;">
+                    SEMESTER COUNTDOWN
+                </div>
+                <div style="margin-top:6px;">
+                    {countdown_text}
                 </div>
             </div>
-            <div style="text-align: center; padding: 20px 0; font-size: 10px; color: #ced6e0; letter-spacing: 1px;">Smart Campus Assist · 祝你考试必过</div>
+    
         </div>
+    
+        <div class="footer">
+            Smart Campus Assist · 保佑不挂科 🙏
+        </div>
+    
+    </div>
     </body>
     </html>
     """
