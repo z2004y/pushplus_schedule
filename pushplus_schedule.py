@@ -21,7 +21,7 @@ SMTP_PORT = 465
 # 节假日 API
 HOLIDAY_API_URL = "https://raw.githubusercontent.com/lanceliao/china-holiday-calender/master/holidayAPI.json"
 
-# ================== 2. 核心函数 ==================
+# ================== 2. 核心推送函数 ==================
 
 def send_email(title, html_content):
     if not all([EMAIL_SENDER, EMAIL_PASS, EMAIL_RECEIVER]):
@@ -47,6 +47,8 @@ def send_email(title, html_content):
         print(f"邮件已群发至 {len(receivers)} 个邮箱。")
     except Exception as e:
         print(f"邮件推送失败: {e}")
+
+# ================== 3. 核心逻辑处理 ==================
 
 def get_holiday_status():
     try:
@@ -80,25 +82,28 @@ def is_course_this_week(week_str, current_week):
             except: continue
     return False
 
-# ================== 3. 主流程 ==================
+# ================== 4. 主流程 ==================
 
 def main():
     try:
         with open("timetable.json", 'r', encoding='utf-8') as f:
             config = json.load(f)
     except FileNotFoundError:
-        print("未找到文件。")
+        print("未找到 timetable.json 文件。")
         return
 
     today = date.today()
     curr_week = get_current_week(config["semester_info"]["start_date"])
     weekday_cn = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"][today.weekday()]
-    is_final = curr_week >= 17 
-    days_to_end = (datetime.strptime(config["semester_info"]["end_date"], "%Y-%m-%d").date() - today).days
-    countdown = f"距离学期结束还有 {days_to_end} 天" if days_to_end > 0 else "学期已结束"
+    
+    # 期末判定逻辑
+    is_final_period = curr_week >= 17 
+    end_date = datetime.strptime(config["semester_info"]["end_date"], "%Y-%m-%d").date()
+    days_to_end = (end_date - today).days
+    countdown_text = f"距离学期结束还有 {days_to_end} 天" if days_to_end > 0 else "学期已结束"
     is_off_day, holiday_tag = get_holiday_status()
 
-    # 天气信息
+    # 获取天气
     temp_range, weather_info = "N/A", "未知"
     if WEATHER_API_KEY:
         try:
@@ -108,25 +113,27 @@ def main():
                 weather_info = w_res["result"]["future"][0]['weather']
         except: pass
 
-    # 课程筛选
+    # 筛选课程
     today_courses = [c for c in config["courses"] if c["day"] == weekday_cn and is_course_this_week(c["weeks"], curr_week)]
     today_courses.sort(key=lambda x: x.get("time", "00:00"))
 
-    # UI 颜色与适配逻辑
-    header_gradient = "linear-gradient(135deg, #ff4757, #ff6b81)" if is_final else "linear-gradient(135deg, #5352ed, #70a1ff)"
-    # 使用半透明白作为背景，在深色模式下会自然变暗
+    # UI 变量定义 (修复 NameError)
+    header_gradient = "linear-gradient(135deg, #ff4757, #ff6b81)" if is_final_period else "linear-gradient(135deg, #5352ed, #70a1ff)"
+    title_prefix = "🔥 期末周提醒" if is_final_period else "📚 今日课表"
+    
+    # 颜色适配方案 (透明背景)
     card_bg = "rgba(255, 255, 255, 0.95)" 
     text_main = "#2f3542"
     text_sub = "#747d8c"
 
     course_cards = ""
     if is_off_day and not today_courses:
-        main_body = f"<div style='padding: 50px 20px; text-align: center;'><h4 style='color: {text_main};'>{holiday_tag}休息日</h4></div>"
+        main_body_html = f"<div style='padding: 50px 20px; text-align: center;'><h4 style='color: {text_main};'>{holiday_tag}休息日</h4></div>"
     else:
         colors = [("#5352ed", "rgba(83, 82, 237, 0.1)"), ("#2ed573", "rgba(46, 213, 115, 0.1)"), ("#ffa502", "rgba(255, 165, 2, 0.1)")]
         for i, c in enumerate(today_courses):
-            m_c = "#ff4757" if is_final else colors[i % len(colors)][0]
-            b_c = "rgba(255, 71, 87, 0.1)" if is_final else colors[i % len(colors)][1]
+            m_c = "#ff4757" if is_final_period else colors[i % len(colors)][0]
+            b_c = "rgba(255, 71, 87, 0.1)" if is_final_period else colors[i % len(colors)][1]
             course_cards += f"""
             <div style='margin-bottom: 15px; background: {card_bg}; border-radius: 12px; border-left: 5px solid {m_c}; padding: 18px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);'>
                 <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;'>
@@ -134,37 +141,39 @@ def main():
                     <span style='font-size: 11px; background: {b_c}; color: {m_c}; padding: 3px 8px; border-radius: 5px;'>{c['session']}</span>
                 </div>
                 <div style='color: {text_sub}; font-size: 13px; line-height: 1.8;'>
-                    <div style='display: inline-block; width: 48%;'>🕒 {c['time']}</div>
-                    <div style='display: inline-block; width: 48%;'>📍 {c['location']}</div>
-                    <div style='display: inline-block; width: 48%;'>👨‍🏫 {c['teacher']}</div>
-                    <div style='display: inline-block; width: 48%; color: {m_c};'>🗓️ {c['weeks']}</div>
+                    <div style='display: inline-block; width: 48%; min-width: 140px;'>🕒 {c['time']}</div>
+                    <div style='display: inline-block; width: 48%; min-width: 140px;'>📍 {c['location']}</div>
+                    <div style='display: inline-block; width: 48%; min-width: 140px;'>👨‍🏫 {c['teacher']}</div>
+                    <div style='display: inline-block; width: 48%; min-width: 140px; color: {m_c}; font-weight: bold;'>🗓️ {c['weeks']}</div>
                 </div>
             </div>"""
-        main_body = f"<div style='padding: 15px;'>{course_cards or '<p style=text-align:center>今日无课</p>'}</div>"
+        if not today_courses:
+            course_cards = f"<p style='text-align: center; color: {text_sub}; padding: 40px;'>今天没课，记得温习功课哦！</p>"
+        main_body_html = f"<div style='padding: 15px;'>{course_cards}</div>"
 
-    # 最终适配响应式与夜间模式的 HTML
+    # 最终 HTML (包含 Meta 标签适配夜间模式)
     full_html = f"""
     <!DOCTYPE html>
-    <html lang="zh">
+    <html>
     <head>
         <meta name="color-scheme" content="light dark">
         <meta name="supported-color-schemes" content="light dark">
         <style>
             :root {{ color-scheme: light dark; supported-color-schemes: light dark; }}
             @media (prefers-color-scheme: dark) {{
-                .container {{ background: #1c1c1e !important; }}
-                .card {{ background: rgba(44, 44, 46, 0.8) !important; border-color: rgba(255,255,255,0.1) !important; }}
+                .container {{ background: transparent !important; }}
                 .text-main {{ color: #ffffff !important; }}
                 .text-sub {{ color: #aeaeb2 !important; }}
+                .footer-text {{ color: #636366 !important; }}
             }}
         </style>
     </head>
-    <body style="margin: 0; padding: 0;">
+    <body style="margin: 0; padding: 0; background: transparent;">
         <div class="container" style='max-width: 600px; margin: 0 auto; background: transparent; font-family: -apple-system, system-ui, sans-serif;'>
             <div style='background: {header_gradient}; padding: 35px 25px; color: white; border-radius: 20px 20px 0 0;'>
-                <table width="100%">
+                <table width="100%" border="0" cellspacing="0" cellpadding="0">
                     <tr>
-                        <td>
+                        <td align="left">
                             <h2 style='margin: 0; font-size: 22px;'>{title_prefix}</h2>
                             <p style='margin: 5px 0 0; opacity: 0.8; font-size: 13px;'>第 {curr_week} 周 · {weekday_cn}</p>
                         </td>
@@ -176,9 +185,9 @@ def main():
                 </table>
             </div>
             <div style="background: rgba(255,255,255,0.05); border-radius: 0 0 20px 20px; overflow: hidden; padding-bottom: 10px;">
-                {main_body}
-                <div style='text-align: center; padding: 15px; border-top: 1px solid rgba(128,128,128,0.1); color: #8e8e93; font-size: 12px;'>
-                    — {countdown} —
+                {main_body_html}
+                <div style='text-align: center; padding: 15px; border-top: 1px solid rgba(128,128,128,0.1); color: #8e8e93; font-size: 12px;' class="footer-text">
+                    — {countdown_text} —
                 </div>
             </div>
         </div>
@@ -186,9 +195,12 @@ def main():
     </html>
     """
 
-    push_title = f"{weekday_cn}课表({len(today_courses)}门)"
+    # 发送推送
+    push_title = f"{'🔥' if is_final_period else '📅'} {weekday_cn}课表({len(today_courses)}门)"
     if PUSHPLUS_TOKEN:
-        requests.post("http://www.pushplus.plus/send", json={"token": PUSHPLUS_TOKEN, "title": push_title, "content": full_html, "template": "html"})
+        try:
+            requests.post("http://www.pushplus.plus/send", json={"token": PUSHPLUS_TOKEN, "title": push_title, "content": full_html, "template": "html"}, timeout=10)
+        except: pass
     send_email(push_title, full_html)
 
 if __name__ == "__main__":
