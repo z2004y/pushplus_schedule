@@ -158,165 +158,177 @@ def main():
             course_cards = f"<div style='text-align: center; color: {t_sub}; padding: 60px 0; font-size: 14px;'>📖 今日无课，正是自习好时光</div>"
         main_body_html = f"<div style='padding: 15px;'>{course_cards}</div>"
 
-    # 6. HTML 模板拼接 (含夜间模式适配)
+# 6. HTML 模板拼接 (亮色模式优化版)
     full_html = f"""
     <!DOCTYPE html>
     <html lang="zh">
     <head>
-    <meta name="color-scheme" content="light dark">
-    <style>
-        body {{
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", sans-serif;
-            background: #f5f7fa;
-        }}
-    
-        .container {{
-            max-width: 520px;
-            margin: 0 auto;
-            border-radius: 28px;
-            overflow: hidden;
-            box-shadow: 0 40px 80px rgba(0,0,0,0.12);
-        }}
-    
-        .header {{
-            background: linear-gradient(135deg, #89f7fe 0%, #66a6ff 100%);
-            padding: 50px 30px 40px;
-            color: #1a1a1a;
-        }}
-    
-        .title {{
-            font-size: 28px;
-            font-weight: 800;
-            letter-spacing: 1px;
-        }}
-    
-        .sub {{
-            margin-top: 8px;
-            font-size: 14px;
-            opacity: 0.7;
-        }}
-    
-        .weather {{
-            text-align: right;
-            font-size: 13px;
-        }}
-    
-        .glass {{
-            background: rgba(255,255,255,0.55);
-            backdrop-filter: blur(20px);
-            padding: 20px;
-        }}
-    
-        .card {{
-            background: rgba(255,255,255,0.75);
-            border-radius: 20px;
-            padding: 20px;
-            margin-bottom: 18px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.06);
-            transition: all 0.25s ease;
-        }}
-    
-        .card:hover {{
-            transform: translateY(-3px);
-            box-shadow: 0 25px 50px rgba(0,0,0,0.12);
-        }}
-    
-        .course-title {{
-            font-size: 20px;
-            font-weight: 700;
-            margin-bottom: 10px;
-        }}
-    
-        .tag {{
-            font-size: 11px;
-            padding: 4px 10px;
-            border-radius: 8px;
-            background: rgba(0,0,0,0.05);
-        }}
-    
-        .grid {{
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            font-size: 13px;
-            color: #555;
-        }}
-    
-        .item {{
-            background: rgba(0,0,0,0.03);
-            padding: 8px 10px;
-            border-radius: 10px;
-        }}
-    
-        .footer {{
-            text-align: center;
-            padding: 25px 0;
-            font-size: 12px;
-            color: #999;
-        }}
-    
-        @media (prefers-color-scheme: dark) {{
-            body {{ background: #111; }}
-            .glass {{ background: rgba(30,30,30,0.6); }}
-            .card {{ background: rgba(40,40,40,0.8); }}
-            .item {{ background: rgba(255,255,255,0.05); }}
-            .title, .course-title {{ color: #fff; }}
-        }}
-    </style>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="color-scheme" content="light">
+        <style>
+            /* 强制在邮件客户端中使用亮色样式，确保白天显示效果 */
+            body {{ 
+                margin: 0 !important; 
+                padding: 15px !important; 
+                background-color: #F6F8FA !important; /* 极淡的底色，衬托卡片 */
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                -webkit-font-smoothing: antialiased;
+            }}
+            .main-container {{
+                max-width: 460px;
+                margin: 0 auto;
+                background-color: #FFFFFF;
+                border-radius: 28px;
+                overflow: hidden;
+                /* 分层柔和阴影，营造高级感 */
+                box-shadow: 0 4px 6px rgba(50, 50, 93, 0.02), 0 10px 20px rgba(0, 0, 0, 0.06);
+            }}
+            
+            /* Header Style */
+            .header {{
+                background: {header_gradient};
+                padding: 40px 25px 30px;
+                color: #FFFFFF; /* 强制头部文字为白色 */
+                position: relative;
+            }}
+            .header h2 {{
+                margin: 0;
+                font-size: 26px;
+                font-weight: 800;
+                letter-spacing: -0.5px;
+                text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }}
+            .header-date {{
+                margin-top: 6px;
+                font-size: 14px;
+                opacity: 0.9;
+                font-weight: 500;
+            }}
+            .weather-box {{
+                position: absolute;
+                right: 25px;
+                bottom: 30px;
+                text-align: right;
+                background: rgba(255,255,255,0.15); /* 微亮的透明块，仅用于装饰天气 */
+                padding: 8px 12px;
+                border-radius: 12px;
+            }}
+            
+            /* Content Area */
+            .content-body {{
+                padding: 20px 15px 10px;
+                background-color: #FFFFFF;
+            }}
+            
+            /* Course Card Style - 彻底摒弃半透明 */
+            .course-card {{
+                background-color: #FFFFFF;
+                border-radius: 20px;
+                padding: 18px;
+                margin-bottom: 15px;
+                /* 稍微加深一点的阴影，使其在白底上更突出 */
+                box-shadow: 0 7px 14px rgba(50, 50, 93, 0.03), 0 3px 6px rgba(0, 0, 0, 0.05);
+                border: 1px solid #E6EBF1; /* 添加极细的边框线以定义边界 */
+                position: relative;
+                overflow: hidden;
+            }}
+            /* 在期末周添加警示色边条 */
+            .final-period-border {{
+                position: absolute;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                width: 5px;
+                background-color: #eb4d4b;
+            }}
+            
+            .course-name {{
+                font-size: 19px;
+                font-weight: 700;
+                color: #1A1C1D; /* 深黑灰色文字，保证清晰度 */
+                margin-bottom: 12px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            }}
+            .session-tag {{
+                font-size: 11px;
+                padding: 3px 8px;
+                border-radius: 8px;
+                background-color: #F1F3F5; /* 浅灰底色衬托节次信息 */
+                color: #57606F;
+                font-weight: bold;
+            }}
+            
+            .info-grid {{
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }}
+            .info-item {{
+                font-size: 13px;
+                color: #4F5660;
+                display: flex;
+                align-items: center;
+                padding: 6px 10px;
+                border-radius: 10px;
+            }}
+            /* 高亮时间信息 */
+            .time-highlight {{
+                background-color: rgba(30, 144, 255, 0.08);
+                color: #1E90FF;
+                font-weight: 600;
+            }}
+            /* 高亮地点信息 */
+            .loc-highlight {{
+                background-color: rgba(46, 213, 115, 0.08);
+                color: #2ED573;
+            }}
+            
+            /* Footer */
+            .footer {{
+                text-align: center;
+                padding: 20px 25px 30px;
+                color: #A4B0BE;
+                background-color: #FFFFFF;
+                border-top: 1px solid #F1F3F5;
+            }}
+            .countdown-text {{
+                font-size: 12px;
+                color: {t_sub};
+                margin-top: 8px;
+                font-weight: 500;
+            }}
+        </style>
     </head>
-    
     <body>
-    <div class="container">
-    
-        <!-- Header -->
-        <div class="header">
-            <table width="100%">
-                <tr>
-                    <td>
-                        <div class="title">
-                            {'🔥 期末作战' if is_final_period else '📅 今日行程'}
-                        </div>
-                        <div class="sub">
-                            Week {curr_week} · {weekday_cn} · {today.strftime('%m-%d')}
-                        </div>
-                    </td>
-                    <td class="weather">
-                        <div>{temp_range}</div>
-                        <div>{CITY_NAME} / {weather_info}</div>
-                    </td>
-                </tr>
-            </table>
-        </div>
-    
-        <!-- 内容 -->
-        <div class="glass">
-    
-            {course_cards if today_courses else f'''
-            <div style="text-align:center;padding:60px 0;">
-                <div style="font-size:50px;">🌿</div>
-                <div style="margin-top:10px;">今日无课，好好休息</div>
-            </div>
-            '''}
-    
-            <!-- 倒计时 -->
-            <div style="text-align:center;margin-top:20px;">
-                <div style="font-size:11px;letter-spacing:2px;color:#aaa;">
-                    SEMESTER COUNTDOWN
-                </div>
-                <div style="margin-top:6px;">
-                    {countdown_text}
+        <div class="main-container">
+            <div class="header">
+                <h2>{'🔥 期末冲刺' if is_final_period else '📅 今日行程'}</h2>
+                <div class="header-date">Week {curr_week} · {weekday_cn} · {today.strftime('%m月%d日')}</div>
+                <div class="weather-box">
+                    <div style="font-size: 20px; font-weight: 300; color:#FFFFFF;">{temp_range}</div>
+                    <div style="font-size: 12px; font-weight: 600; opacity: 0.9; color:#FFFFFF;">{weather_info} @ {CITY_NAME}</div>
                 </div>
             </div>
-    
+
+            <div class="content-body">
+                {course_cards if not (is_off_day and not today_courses) else f"""
+                <div style='padding: 60px 20px; text-align: center;'>
+                    <div style='font-size: 50px; margin-bottom: 20px;'>☕</div>
+                    <div style='font-size: 18px; color: #1A1C1D; font-weight: 700;'>{holiday_tag}休息日</div>
+                    <div style='font-size: 13px; color: #747D8C; margin-top: 8px;'>今日无课，尽情享受悠闲时光吧</div>
+                </div>
+                """}
+            </div>
+
+            <div class="footer">
+                <div style="font-size: 11px; font-weight: bold; letter-spacing: 2px;">— SEMESTER COUNTDOWN —</div>
+                <div class="countdown-text">{countdown_text}</div>
+                <div style="margin-top: 20px; font-size: 10px; opacity: 0.7;">Smart Campus Assist · 祝你每天都进步</div>
+            </div>
         </div>
-    
-        <div class="footer">
-            Smart Campus Assist · 保佑不挂科 🙏
-        </div>
-    
-    </div>
     </body>
     </html>
     """
