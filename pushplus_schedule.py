@@ -152,7 +152,7 @@ def main():
     # 7. 构造 HTML
     # 极简进度条：Bar + 数字并排
     mini_progress_html = f"""
-    <div style='margin-top: 8px; display: flex; align-items: center;'>
+    <div style='margin-top: 3px; display: flex; align-items: center;'>
         <div style='width: 100px; background: rgba(255,255,255,0.3); height: 4px; border-radius: 2px; overflow: hidden;'>
             <div style='width: {progress_percent}%; background: #ffffff; height: 100%; border-radius: 2px;'></div>
         </div>
