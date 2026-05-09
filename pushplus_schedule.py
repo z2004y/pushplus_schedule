@@ -8,12 +8,12 @@ from email.header import Header
 from datetime import date, datetime, timedelta
 
 # ================== 0. 环境初始化 ==================
+# 强制设置北京时区，解决 GitHub Actions (UTC) 日期偏差
 os.environ['TZ'] = 'Asia/Shanghai'
 if hasattr(time, 'tzset'):
     time.tzset()
 
 # ================== 1. 基础配置 ==================
-# 建议在 GitHub Actions Secrets 中配置变量
 PUSHPLUS_TOKEN = os.getenv("PUSHPLUS_TOKEN", "你的_PUSHPLUS_TOKEN")
 WEATHER_API_KEY = os.getenv("WEATHER_API_KEY", "你的_聚合天气_KEY")
 CITY_NAME = os.getenv("CITY_NAME", "兰州")
@@ -38,7 +38,7 @@ def get_hitokoto():
         return "每一个不曾起舞的日子，都是对生命的辜负。 —— 尼采"
 
 def get_holiday_status():
-    """识别节假日与调休逻辑"""
+    """通过 API 精准识别放假与调休"""
     today = date.today()
     today_str = today.strftime("%Y-%m-%d")
     week_map = {"Monday": "周一", "Tuesday": "周二", "Wednesday": "周三", 
@@ -51,7 +51,6 @@ def get_holiday_status():
             h_type = res["type"]["type"] 
             h_name = res["type"]["name"]
             if h_type in [0, 3]:
-                # 判定是否为调休上课
                 is_adj = today.weekday() >= 5
                 target = week_map.get(res.get("holiday", {}).get("target")) if res.get("holiday") else None
                 return False, h_name, is_adj, target
@@ -61,7 +60,7 @@ def get_holiday_status():
     return is_weekend, ("周末" if is_weekend else "工作日"), False, None
 
 def is_course_this_week(course_name, week_str, current_week):
-    """单双周筛选逻辑"""
+    """解析周数并支持单双周筛选"""
     is_even = current_week % 2 == 0
     if "单" in week_str and is_even: return False
     if "双" in week_str and not is_even: return False
@@ -94,29 +93,26 @@ def main():
     today = date.today()
     s_date = datetime.strptime(config["semester_info"]["start_date"], "%Y-%m-%d").date()
     e_date = datetime.strptime(config["semester_info"]["end_date"], "%Y-%m-%d").date()
-    
-    # 周数计算
     s_monday = s_date - timedelta(days=s_date.weekday())
     curr_week = ((today - s_monday).days // 7) + 1
     
-    # 精确进度计算
     total_days = (e_date - s_date).days
     elapsed_days = (today - s_date).days
     progress = max(0, min(100, int((elapsed_days / total_days) * 100))) if total_days > 0 else 0
-    
     natural_weekday = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"][today.weekday()]
     
-    # 3. 状态判定与文字映射
+    # 3. 状态判定
     is_off, status_text, is_adj, target_day = get_holiday_status()
     query_day = target_day if (is_adj and target_day) else natural_weekday
     hitokoto = get_hitokoto()
 
+    # 颜色主题定义 (渐变起始色, 渐变结束色)
     if is_adj:
-        label, color, header_title = "调休", "#d63031", "🚨 调休上课"
+        label, theme_color, theme_gradient, header_title = "调休", "#FF4B2B", "#FF416C", "🚨 调休上课"
     elif is_off:
-        label, color, header_title = "放假", "#27ae60", "🏖️ 放假休息"
+        label, theme_color, theme_gradient, header_title = "放假", "#56AB2F", "#A8E063", "🏖️ 放假休息"
     else:
-        label, color, header_title = "上课", "#0984e3", "📚 今日课表"
+        label, theme_color, theme_gradient, header_title = "上课", "#2193B0", "#6DDCFF", "📚 今日课表"
 
     # 4. 获取天气
     temp, weather = "N/A", "未知"
@@ -129,11 +125,11 @@ def main():
                 temp, weather = f_w["temperature"], f_w['weather']
         except: pass
 
-    # 5. 筛选与 zfill 排序
+    # 5. 筛选与排序
     courses = [c for c in config["courses"] if c["day"] == query_day and is_course_this_week(c['name'], c["weeks"], curr_week)]
     courses.sort(key=lambda x: x.get("time", "00:00").split('-')[0].strip().zfill(5))
 
-    # 6. 推送标题定制
+    # 6. 推送标题逻辑
     if is_off and len(courses) == 0:
         push_title = f"放假休息 | {len(courses)}门课"
     elif is_adj:
@@ -141,64 +137,69 @@ def main():
     else:
         push_title = f"{natural_weekday}课表 | {len(courses)}门课"
 
-    # 7. 构造 HTML - 极致紧凑页眉
+    # 7. 构造 HTML
+    # 进度条组件
     mini_bar = f"""
-    <div style='margin-top: 1px; display: flex; align-items: center;'>
-        <div style='width: 80px; background: rgba(255,255,255,0.3); height: 4px; border-radius: 2px; overflow: hidden;'>
-            <div style='width: {progress}%; background: #ffffff; height: 100%; border-radius: 2px;'></div>
+    <div style='margin-top: 2px; display: flex; align-items: center;'>
+        <div style='width: 80px; background: rgba(255,255,255,0.3); height: 4px; border-radius: 4px; overflow: hidden;'>
+            <div style='width: {progress}%; background: #ffffff; height: 100%; border-radius: 4px;'></div>
         </div>
-        <span style='font-size: 10px; color: #ffffff; margin-left: 5px; font-weight: bold; line-height: 1;'>{progress}%</span>
+        <span style='font-size: 10px; color: #ffffff; margin-left: 6px; font-weight: bold; line-height: 1;'>{progress}%</span>
     </div>"""
 
+    # 课程渲染
     course_cards = ""
     if is_off and len(courses) == 0:
-        course_cards = f"<div style='padding: 30px 0; text-align: center;'><div style='font-size: 35px;'>☕</div><p style='color: #636e72; font-size: 13px; margin-top:10px;'>今天放假，好好休息吧！</p></div>"
+        course_cards = f"<div style='padding: 40px 0; text-align: center;'><div style='font-size: 35px;'>☕</div><p style='color: #94a3b8; font-size: 14px; margin-top: 10px;'>今天放假，好好休息吧！</p></div>"
     else:
         if is_adj:
-            course_cards += f"<div style='background:#fff5f5; border:1px solid #fab1a0; padding:6px; border-radius:6px; margin-bottom:12px; color:#c0392b; font-size:11px; text-align:center;'>调休按 <b>{query_day}</b> 上课</div>"
+            course_cards += f"<div style='background:rgba(214,48,49,0.05); border:1px solid rgba(214,48,49,0.2); padding:8px; border-radius:10px; margin-bottom:15px; color:#d63031; font-size:12px; text-align:center;'>调休：按<b>{query_day}</b>课表上课</div>"
         for c in courses:
             course_cards += f"""
-            <div style='margin-bottom: 10px; background: #fff; border-radius: 10px; border-left: 4px solid {color}; padding: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);'>
-                <div style='font-weight: bold; color: #2d3436; font-size: 15px; margin-bottom: 4px;'>{c['name']}</div>
-                <div style='font-size: 12px; color: #636e72; display: grid; grid-template-columns: 1fr 1fr; gap: 2px;'>
+            <div style='margin-bottom: 12px; background: #ffffff; border-radius: 14px; border-left: 4px solid {theme_color}; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); border: 1px solid #f1f5f9;'>
+                <div style='font-weight: 800; color: #1e293b; font-size: 16px; margin-bottom: 6px;'>{c['name']}</div>
+                <div style='font-size: 13px; color: #64748b; display: grid; grid-template-columns: 1fr 1fr; gap: 4px;'>
                     <div>🕒 {c['time']}</div><div>📍 {c['location']}</div>
-                    <div>👨‍🏫 {c['teacher']}</div><div style='color: {color}; font-weight: bold;'>🗓️ {c['weeks']}</div>
+                    <div>👨‍🏫 {c['teacher']}</div><div style='color: {theme_color}; font-weight: bold;'>🗓️ {c['weeks']}</div>
                 </div>
             </div>"""
         if not courses:
-            course_cards += f"<p style='text-align:center; padding:20px; color:#b2bec3;'>暂无课程</p>"
+            course_cards += f"<p style='text-align:center; padding:30px; color:#94a3b8;'>今日暂无课程安排</p>"
 
+    # 最终 HTML 模板
     full_html = f"""
-    <div style='max-width: 400px; margin: 0 auto; background: #f8f9fc; border-radius: 20px; overflow: hidden; font-family: -apple-system, sans-serif; border: 1px solid #e1e4e8; box-shadow: 0 4px 12px rgba(0,0,0,0.05);'>
-        <!-- 紧凑 Header -->
-        <div style='background: {color}; padding: 15px 18px; color: white;'>
-            <div style='text-align: center; margin-bottom: 8px;'>
-                <h3 style='margin: 0; font-size: 18px; letter-spacing: 0.5px;'>{header_title}</h3>
-            </div>
-            
+    <div style='max-width: 400px; margin: 0 auto; background: #ffffff; border-radius: 24px; overflow: hidden; font-family: -apple-system, system-ui, sans-serif; border: 1px solid #f1f5f9; box-shadow: 0 10px 25px rgba(0,0,0,0.05);'>
+        <!-- 页眉：左右对齐 + 渐变 -->
+        <div style='background: linear-gradient(135deg, {theme_color}, {theme_gradient}); padding: 20px; color: white;'>
             <div style='display: flex; justify-content: space-between; align-items: flex-end;'>
-                <!-- 左侧: 日期与进度条 -->
                 <div style='text-align: left;'>
+                    <h3 style='margin: 0 0 6px 0; font-size: 18px; letter-spacing: 0.5px; font-weight: 800;'>{header_title}</h3>
                     <p style='margin: 0; opacity: 0.95; font-size: 13px; font-weight: 600; line-height: 1.1;'>
                         第 {curr_week} 周 · {natural_weekday} ({label})
                     </p>
                     {mini_bar}
                 </div>
-                <!-- 右侧: 温度与天气 -->
                 <div style='text-align: right;'>
-                    <div style='font-size: 18px; font-weight: 800; line-height: 1.1;'>{temp}</div>
-                    <div style='font-size: 11px; opacity: 0.85; margin-top: 1px; line-height: 1.1;'>{CITY_NAME} · {weather}</div>
+                    <div style='font-size: 18px; font-weight: 900; line-height: 1.1;'>{temp}</div>
+                    <div style='font-size: 11px; opacity: 0.9; margin-top: 2px; line-height: 1.1; font-weight: 500;'>{CITY_NAME} · {weather}</div>
                 </div>
             </div>
         </div>
         
-        <div style='padding: 15px;'>
+        <!-- 内容区 -->
+        <div style='padding: 18px;'>
             {course_cards}
-            <div style='margin-top: 10px; padding: 12px; background: #ffffff; border-radius: 12px; border: 1px dashed #d1d9e6;'>
-                <div style='font-size: 12px; color: #4a5568; line-height: 1.5; font-style: italic; text-align: center;'>“ {hitokoto} ”</div>
+            
+            <!-- 一言语录：浅色呼吸感盒子 -->
+            <div style='margin-top: 8px; padding: 14px; background: rgba(0,0,0,0.02); border-radius: 14px; border: 1px solid rgba(0,0,0,0.02);'>
+                <div style='font-size: 12px; color: #475569; line-height: 1.6; font-style: italic; text-align: center;'>“ {hitokoto} ”</div>
             </div>
         </div>
-        <div style='text-align: center; padding: 10px 0; color: #a0aec0; font-size: 10px; background: #f1f4f8;'>自动提醒助手 · 祝你愉快 ✨</div>
+        
+        <!-- 页脚 -->
+        <div style='text-align: center; padding: 12px 0; color: #94a3b8; font-size: 10px; background: #f8fafc;'>
+            自动提醒助手 · 愿你学有所成 ✨
+        </div>
     </div>"""
 
     # 8. 执行发送
@@ -209,11 +210,11 @@ def main():
         try:
             receivers = [r.strip() for r in EMAIL_RECEIVER.split(",") if r.strip()]
             msg = MIMEText(full_html, 'html', 'utf-8'); msg['Subject'] = Header(push_title, 'utf-8')
-            msg['From'] = f"{Header('助手', 'utf-8').encode()} <{EMAIL_SENDER}>"
+            msg['From'] = f"{Header('课表助手', 'utf-8').encode()} <{EMAIL_SENDER}>"
             with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
                 server.login(EMAIL_SENDER, EMAIL_PASS); server.sendmail(EMAIL_SENDER, receivers, msg.as_string())
             debug_log("推送成功")
-        except Exception as e: debug_log(f"邮件失败: {e}")
+        except Exception as e: debug_log(f"失败: {e}")
 
 if __name__ == "__main__":
     main()
