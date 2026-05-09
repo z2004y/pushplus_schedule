@@ -141,7 +141,7 @@ def main():
     # 优先级：补班(红) > 有课(蓝) > 放假(绿)
     if is_makeup:
         theme_color = "#d63031" # 红色
-        title_label = "🚨 补班上课提醒"
+        title_label = "🚨 补班上课"
     elif len(today_courses) > 0:
         theme_color = "#0984e3" # 蓝色
         title_label = "📚 今日课表"
