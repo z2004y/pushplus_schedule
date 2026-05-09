@@ -59,7 +59,7 @@
 ### 2. 环境变量 (GitHub Secrets)
 
 | 变量名 | 说明 |
-|  |  |
+| --- | --- |
 | `PUSHPLUS_TOKEN` | PushPlus 令牌 |
 | `WEATHER_API_KEY` | 聚合天气 Key |
 | `EMAIL_SENDER` | 发信人邮箱 |
