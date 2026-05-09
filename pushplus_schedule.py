@@ -8,20 +8,17 @@ from email.header import Header
 from datetime import date, datetime, timedelta
 
 # ================== 0. 环境初始化 ==================
-# 强制设置时区为北京时间，解决 GitHub Actions (UTC) 日期偏差
 os.environ['TZ'] = 'Asia/Shanghai'
 if hasattr(time, 'tzset'):
     time.tzset()
 
 # ================== 1. 基础配置 ==================
-# 建议在 GitHub Actions Secrets 中配置，或直接在此修改
 PUSHPLUS_TOKEN = os.getenv("PUSHPLUS_TOKEN", "你的_PUSHPLUS_TOKEN")
 WEATHER_API_KEY = os.getenv("WEATHER_API_KEY", "你的_聚合天气_KEY")
 CITY_NAME = os.getenv("CITY_NAME", "兰州")
 
-# 邮件配置
 EMAIL_SENDER = os.getenv("EMAIL_SENDER")
-EMAIL_PASS = os.getenv("EMAIL_PASS")      # 授权码/应用密码
+EMAIL_PASS = os.getenv("EMAIL_PASS")
 EMAIL_RECEIVER = os.getenv("EMAIL_RECEIVER") 
 SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.qq.com")
 SMTP_PORT = 465
@@ -32,7 +29,7 @@ def debug_log(msg):
     print(f"[{datetime.now().strftime('%H:%M:%S')}] DEBUG: {msg}")
 
 def get_hitokoto():
-    """获取一言随机语录"""
+    """获取一言语录"""
     try:
         res = requests.get("https://v1.hitokoto.cn/?c=d&c=i", timeout=5).json()
         return f"{res['hitokoto']} —— 「{res['from']}」"
@@ -40,7 +37,7 @@ def get_hitokoto():
         return "每一个不曾起舞的日子，都是对生命的辜负。 —— 尼采"
 
 def get_holiday_status():
-    """通过 API 精确识别放假与调休"""
+    """判定节假日与调休逻辑"""
     today = date.today()
     today_str = today.strftime("%Y-%m-%d")
     week_map = {"Monday": "周一", "Tuesday": "周二", "Wednesday": "周三", 
@@ -50,10 +47,9 @@ def get_holiday_status():
         headers = {'User-Agent': 'Mozilla/5.0'}
         res = requests.get(url, headers=headers, timeout=10).json()
         if res.get("code") == 0:
-            h_type = res["type"]["type"]  # 0:工作日, 1:周末, 2:节日, 3:调休
+            h_type = res["type"]["type"] 
             h_name = res["type"]["name"]
             if h_type in [0, 3]:
-                # 如果是工作日或调休但实际是周六日，判定为调休上课
                 is_adj = today.weekday() >= 5
                 target = week_map.get(res.get("holiday", {}).get("target")) if res.get("holiday") else None
                 return False, h_name, is_adj, target
@@ -63,7 +59,7 @@ def get_holiday_status():
     return is_weekend, ("周末" if is_weekend else "工作日"), False, None
 
 def is_course_this_week(course_name, week_str, current_week):
-    """解析周数并支持单双周筛选"""
+    """单双周筛选逻辑"""
     is_even = current_week % 2 == 0
     if "单" in week_str and is_even: return False
     if "双" in week_str and not is_even: return False
@@ -85,14 +81,13 @@ def is_course_this_week(course_name, week_str, current_week):
 def main():
     debug_log("=== 启动课表推送助手 ===")
     
-    # 1. 加载本地 JSON
     try:
         with open("timetable.json", 'r', encoding='utf-8') as f:
             config = json.load(f)
     except Exception as e:
         debug_log(f"读取失败: {e}"); return
 
-    # 2. 基础时间与高精度进度计算
+    # 1. 时间与进度计算
     today = date.today()
     start_dt = datetime.strptime(config["semester_info"]["start_date"], "%Y-%m-%d").date()
     end_dt = datetime.strptime(config["semester_info"]["end_date"], "%Y-%m-%d").date()
@@ -103,10 +98,9 @@ def main():
     total_days = (end_dt - start_dt).days
     elapsed_days = (today - start_dt).days
     progress_percent = max(0, min(100, int((elapsed_days / total_days) * 100))) if total_days > 0 else 0
-    
     natural_weekday = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"][today.weekday()]
     
-    # 3. 状态判定与文字映射
+    # 2. 状态判定
     is_off_day, status_text, is_adj, target_weekday = get_holiday_status()
     query_day = target_weekday if (is_adj and target_weekday) else natural_weekday
     hitokoto_text = get_hitokoto()
@@ -118,7 +112,7 @@ def main():
     else:
         bracket_label = "上课"; theme_color = "#0984e3"; header_title = "📚 今日课表"
 
-    # 4. 获取天气
+    # 3. 天气获取
     temp, weather = "N/A", "未知"
     if WEATHER_API_KEY and WEATHER_API_KEY != "你的_聚合天气_KEY":
         try:
@@ -129,11 +123,11 @@ def main():
                 temp, weather = future["temperature"], future['weather']
         except: pass
 
-    # 5. 筛选与 zfill 排序 (确保 8:30 在 10:00 前)
+    # 4. 筛选与排序
     today_courses = [c for c in config["courses"] if c["day"] == query_day and is_course_this_week(c['name'], c["weeks"], curr_week)]
     today_courses.sort(key=lambda x: x.get("time", "00:00").split('-')[0].strip().zfill(5))
 
-    # 6. 推送标题定制
+    # 5. 推送标题
     if is_off_day and len(today_courses) == 0:
         final_push_title = f"放假休息 | {len(today_courses)}门课"
     elif is_adj:
@@ -141,10 +135,10 @@ def main():
     else:
         final_push_title = f"{natural_weekday}课表 | {len(today_courses)}门课"
 
-    # 7. 构造 HTML
-    # 左侧微型进度条：条 + 百分比并列
+    # 6. 构造 HTML
+    # 左侧进度条：将 margin-top 设为 1px 使其贴近上方文字
     mini_progress_html = f"""
-    <div style='margin-top: 3px; display: flex; align-items: center;'>
+    <div style='margin-top: 1px; display: flex; align-items: center;'>
         <div style='width: 100px; background: rgba(255,255,255,0.3); height: 4px; border-radius: 2px; overflow: hidden;'>
             <div style='width: {progress_percent}%; background: #ffffff; height: 100%; border-radius: 2px;'></div>
         </div>
@@ -170,29 +164,25 @@ def main():
         if not today_courses:
             course_cards += f"<p style='text-align:center; padding:25px; color:#b2bec3;'>暂无课程</p>"
 
-    # 完整 HTML 模板
+    # 页眉：信息密度更高，上下行更紧凑
     full_html = f"""
     <div style='max-width: 420px; margin: 0 auto; background: #f5f6fa; border-radius: 20px; overflow: hidden; font-family: -apple-system, system-ui, sans-serif; border: 1px solid #dcdde1; box-shadow: 0 4px 12px rgba(0,0,0,0.08);'>
         <div style='background: {theme_color}; padding: 25px; color: white;'>
-            <!-- 标题居中 -->
-            <div style='text-align: center; margin-bottom: 15px;'>
+            <div style='text-align: center; margin-bottom: 12px;'>
                 <h3 style='margin: 0; font-size: 20px; letter-spacing: 0.5px;'>{header_title}</h3>
             </div>
             
-            <!-- 下方信息左右分布 -->
             <div style='display: flex; justify-content: space-between; align-items: flex-end;'>
-                <!-- 左侧：周数日期 + 进度条 -->
                 <div style='text-align: left;'>
-                    <p style='margin: 0; opacity: 0.95; font-size: 13px;'>
+                    <p style='margin: 0; opacity: 0.95; font-size: 13px; line-height: 1.2;'>
                         <b>第 {curr_week} 周</b> · {natural_weekday} ({bracket_label})
                     </p>
                     {mini_progress_html}
                 </div>
                 
-                <!-- 右侧：天气信息 -->
                 <div style='text-align: right;'>
-                    <div style='font-size: 18px; font-weight: bold;'>{temp}</div>
-                    <div style='font-size: 11px; opacity: 0.85; margin-top: 2px;'>{CITY_NAME} · {weather}</div>
+                    <div style='font-size: 18px; font-weight: bold; line-height: 1.1;'>{temp}</div>
+                    <div style='font-size: 11px; opacity: 0.85; margin-top: 0px;'>{CITY_NAME} · {weather}</div>
                 </div>
             </div>
         </div>
@@ -208,7 +198,7 @@ def main():
         </div>
     </div>"""
 
-    # 8. 执行发送
+    # 7. 执行发送
     if PUSHPLUS_TOKEN and PUSHPLUS_TOKEN != "你的_PUSHPLUS_TOKEN":
         try: requests.post("http://www.pushplus.plus/send", json={"token": PUSHPLUS_TOKEN, "title": final_push_title, "content": full_html, "template": "html"})
         except: pass
